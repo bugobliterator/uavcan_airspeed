@@ -1,0 +1,3 @@
+[submodule "modules/libuavcan"]
+	path = modules/libuavcan
+	url = https://github.com/nayan-dev/libuavcan
