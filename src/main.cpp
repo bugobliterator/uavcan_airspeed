@@ -11,8 +11,7 @@
 #include <uavcan/protocol/global_time_sync_slave.hpp>
 #include <uavcan/protocol/dynamic_node_id_client.hpp>
 #include <uavcan/protocol/logger.hpp>
-#include <uavcan/equipment/air_data/DiffPressure.hpp>
-#include <uavcan/equipment/air_data/StaticTemperature.hpp>
+#include <uavcan/equipment/air_data/RawAirData.hpp>
 #include <math.h>
 /*
  * GCC 4.9 cannot generate a working binary with higher optimization levels, although
@@ -154,12 +153,10 @@ int main()
     getNode().setModeOperational();
 
     uavcan::MonotonicTime prev_log_at;
-    uavcan::Publisher<uavcan::equipment::air_data::DiffPressure>          _uavcan_pub_pressure(getNode());
-    uavcan::Publisher<uavcan::equipment::air_data::StaticTemperature>           _uavcan_pub_temperature(getNode());
+    uavcan::Publisher<uavcan::equipment::air_data::RawAirData>          _uavcan_pub_raw_aspd(getNode());
     //start I2C read
     uint8_t cmd = 0;
-    _uavcan_pub_pressure.setPriority(6);
-    _uavcan_pub_temperature.setPriority(6);
+    _uavcan_pub_raw_aspd.setPriority(6);
     Chip_I2C_MasterSend(i2cDev,0x28,&cmd,1);
 
     while (true)
@@ -184,7 +181,7 @@ int main()
         dp_raw = int16_t((uint16_t(dat[0]) << 8) + uint16_t(dat[1]));
         dp_raw = 0x3FFF & dp_raw;
         dT_raw = int16_t((uint16_t(dat[2]) << 8) + uint16_t(dat[3]));
-        dT_raw = (0xFFE0 & dT_raw) >> 5;
+        dT_raw = int16_t((0xFFE0 & dT_raw) >> 5);
 
         const float P_max = 1.0f;
         const float P_min = - P_max;
@@ -199,19 +196,17 @@ int main()
         float diff_press_PSI = -((float(dp_raw) - 0.1f*16383.0f) * (P_max-P_min)/(0.8f*16383.0f) + P_min);
 
         float press = diff_press_PSI * PSI_to_Pa;
-        float temp = ((200.0f * dT_raw) / 2047) - 50;
+        float temp = ((200.0f * dT_raw) / 2047) - 50 + 273.15f;
         //float raw_airspeed = sqrtf(press * 2.0f);
         /*
          * CAN error counter, for debugging purposes
          */
 
 
-        uavcan::equipment::air_data::StaticTemperature temp_msg;
-        uavcan::equipment::air_data::DiffPressure press_msg;
-        temp_msg.static_temperature = temp;
-        press_msg.differential_pressure = press;
-        (void)_uavcan_pub_pressure.broadcast(press_msg);
-        (void)_uavcan_pub_temperature.broadcast(temp_msg);
+        uavcan::equipment::air_data::RawAirData raw_aspd_msg;
+        raw_aspd_msg.static_air_temperature = temp;
+        raw_aspd_msg.differential_pressure = press;
+        (void)_uavcan_pub_raw_aspd.broadcast(raw_aspd_msg);
 
         board::resetWatchdog();
     }

@@ -20,11 +20,11 @@ INC = -Isrc/sys                         \
 
 DEF += -DUAVCAN_TINY=1
 
-include ../../../libuavcan/include.mk
+include modules/libuavcan/libuavcan/include.mk
 CPPSRC += $(LIBUAVCAN_SRC)
 INC += -I$(LIBUAVCAN_INC)
 
-include ../driver/include.mk
+include modules/libuavcan/libuavcan_drivers/lpc11c24/driver/include.mk
 CPPSRC += $(LIBUAVCAN_LPC11C24_SRC)
 INC += -I$(LIBUAVCAN_LPC11C24_INC)
 
